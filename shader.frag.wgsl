@@ -82,12 +82,26 @@ fn getNormal(p: vec3f) -> vec3f {
 
 }
 
+@group(0) @binding(0) var<uniform> state: vec2u;
 @fragment
 fn fragmentMain(@builtin(position) fragCoord: vec4f, @location(0) uv: vec2f) -> @location(0) vec4f {
     // set up camera
-    let camX = 0.0;
-    let camY = 0.0;
-    let camZ = -5.0;
+    var camX = 0.0;
+    var camY = 0.0;
+    var camZ = -5.0;
+
+    if (state[0] % 4 == 0) {
+        camX = -0.5;
+    }
+    if (state[0] % 4 == 1) {
+        camX = 0.0;
+    }
+    if (state[0] % 4 == 2) {
+        camX = 0.5;
+    }
+    if (state[0] % 4 == 3) {
+        camX = 0.0;
+    }
 
     // calculate rays
     let originRay = vec3f(camX, camY, camZ);

@@ -57,6 +57,15 @@ async function main(gridSize) {
     });
     device.queue.writeBuffer(vertexBuffer, /*bufferOffset=*/0, vertices);
 
+    // ------------ uniform buffer ------------
+    const uniformArray = new Uint32Array([1]); // Single number
+    const uniformBuffer = device.createBuffer({
+        label: "uniform buffer",
+        size: 8,
+        usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+    });
+    device.queue.writeBuffer(uniformBuffer, 0, uniformArray);
+
     // ------------ vertex + frag shader module ------------
     const vertexShaderCode = await loadShader('./shader.vert.wgsl');
     const fragmentShaderCode = await loadShader('./shader.frag.wgsl');
@@ -78,10 +87,35 @@ async function main(gridSize) {
     // });
 
 
+    // ------------ set up bind groups ------------
+    const bindGroupLayout = device.createBindGroupLayout({
+        label: "bind group layout",
+        entries: [{
+            binding: 0,
+            visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT | GPUShaderStage.COMPUTE,
+            buffer: {}
+        },
+        ]
+    });
+    const pipelineLayout = device.createPipelineLayout({
+        label: "pipeline layout",
+        bindGroupLayouts: [bindGroupLayout],
+    });
+
+    const bindGroup = device.createBindGroup({
+        label: "bind group",
+        layout: bindGroupLayout,
+        entries: [{
+            binding: 0,
+            resource: { buffer: uniformBuffer }
+        },
+        ],
+    })
+
     // ------------ pipeline ------------
     const pipeline = device.createRenderPipeline({
         label: "pipeline",
-        layout: "auto",
+        layout: pipelineLayout,
         vertex: {
             module: shaderModule,
             entryPoint: "vertexMain",
@@ -97,28 +131,36 @@ async function main(gridSize) {
     });
 
 
-
-
-
     // ------------ drawing ------------
-    const encoder = device.createCommandEncoder();
 
-    const pass = encoder.beginRenderPass({
-        colorAttachments: [{
-            view: context.getCurrentTexture().createView(),
-            loadOp: "clear",
-            clearValue: { r: 0, g: 0, b: 0.4, a: 1 },
-            storeOp: "store",
-        }]
-    });
+    function draw(i) {
+        const encoder = device.createCommandEncoder();
+        console.log('i', i);
+        device.queue.writeBuffer(uniformBuffer, 0, new Uint32Array([i]));
 
-    pass.setPipeline(pipeline);
-    pass.setVertexBuffer(0, vertexBuffer);
-    pass.draw(vertices.length / 2); // 6 vertices
+        const pass = encoder.beginRenderPass({
+            colorAttachments: [{
+                view: context.getCurrentTexture().createView(),
+                loadOp: "clear",
+                clearValue: { r: 0, g: 0, b: 0.4, a: 1 },
+                storeOp: "store",
+            }]
+        });
+        pass.setBindGroup(0, bindGroup);
 
-    pass.end();
+        pass.setPipeline(pipeline);
+        pass.setVertexBuffer(0, vertexBuffer);
+        pass.draw(vertices.length / 2); // 6 vertices
 
-    device.queue.submit([encoder.finish()]);
+        pass.end();
+
+        device.queue.submit([encoder.finish()]);
+    }
+
+    const MAX_FRAMES = 100;
+    for (let i = 0; i < MAX_FRAMES; i++) {
+        setTimeout(() => draw(i), i * 300);
+    }
 }
 
 main();
