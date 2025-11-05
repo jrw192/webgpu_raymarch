@@ -27,24 +27,37 @@ fn zPlaneSDF(p: vec3f, z: f32) -> f32 {
     return p.z - z;
 }
 
+fn planeSDF(p: vec3f, n: vec3f, h: f32 ) -> f32 {
+  return dot(p,n) + h;
+}
+
+fn getMin(objs: array<f32, 4>) -> f32 {
+    var minDist = 1000.0;
+    for (var i = 0; i < 4; i += 1) {
+        minDist = min(minDist, objs[i]);
+    }
+    return minDist;
+}
+
 fn sceneSDF(p: vec3f) -> f32 {
-    let sphere1 = sphereSDF(vec3f(-0.3,-0.5,0), p, 0.5);
+    let sphere1 = sphereSDF(vec3f(-0.5,-0.6,0), p, 0.3);
     let sphere2 = sphereSDF(vec3f(0.5,0.5,0), p, 0.2);
     let sphere3 = sphereSDF(vec3f(0.0,0.0,10), p, 2.5);
-    let plane =  xPlaneSDF(p, -0.5);
-    let box = boxSDF(p, vec3f(0.4,0.2,0.2));
+    let yPlane = planeSDF(p, vec3f(0,1,0), 2.0);
+    // let yPlane = yPlaneSDF(p, -2.0);translate box sdftranslate box sdf
+    let box = boxSDF(p, vec3f(0.4,0.2,1.0));
     let torus = torusSDF(p, vec2f(0.3,0.2));
 
-    var world = min(min(sphere1, sphere2), sphere3);
+    let world: array<f32, 4> = array(sphere3, sphere1, box, yPlane);
 
-    return world;
+    return getMin(world);
 }
 
 // march one ray
 fn march(origin: vec3f, dir: vec3f) -> f32 {
-    var MAX_STEPS = 100;
-    var MAX_DIST = 100.0;
-    var MIN_DIST = 0.01;
+    var MAX_STEPS = 1000;
+    var MAX_DIST = 1000.0;
+    var MIN_DIST = 0.005;
     var totalDist = 0.0;
     for (var i = 0; i < MAX_STEPS; i++) {
         // get current position
