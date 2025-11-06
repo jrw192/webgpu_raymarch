@@ -1,5 +1,5 @@
-fn sphereSDF(c: vec3f, p: vec3f, s: f32) -> f32 {
-    return length(p-c) - s;
+fn sphereSDF(p: vec3f, s: f32) -> f32 {
+    return length(p) - s;
 }
 
 fn boxSDF( p: vec3f, b: vec3f) -> f32 {
@@ -31,24 +31,45 @@ fn planeSDF(p: vec3f, n: vec3f, h: f32 ) -> f32 {
   return dot(p,n) + h;
 }
 
-fn getMin(objs: array<f32, 4>) -> f32 {
+fn translate(p: vec3f, t: vec3f) -> vec3f {
+    return p - t;
+}
+
+const PI: f32 = radians(180.0);
+
+fn rotateY(p: vec3f, a: f32) -> vec3f {
+    let theta = (PI / 100) * a;
+    let sinTheta = sin(theta);
+    let cosTheta = cos(theta);
+    return vec3f((cosTheta*p.x) + (sinTheta*p.z), p.y, (-sinTheta*p.x) + (cosTheta*p.z));
+}
+
+fn getMin(objs: array<f32, 6>) -> f32 {
     var minDist = 1000.0;
-    for (var i = 0; i < 4; i += 1) {
+    for (var i = 0; i < 6; i += 1) {
         minDist = min(minDist, objs[i]);
     }
     return minDist;
 }
 
 fn sceneSDF(p: vec3f) -> f32 {
-    let sphere1 = sphereSDF(vec3f(-0.5,-0.6,0), p, 0.3);
-    let sphere2 = sphereSDF(vec3f(0.5,0.5,0), p, 0.2);
-    let sphere3 = sphereSDF(vec3f(0.0,0.0,10), p, 2.5);
-    let yPlane = planeSDF(p, vec3f(0,1,0), 2.0);
+    let sphere1 = sphereSDF(translate(p, vec3f(0.4, 0.3, 0.0)), 0.3);
+    let sphere2 = sphereSDF(p, 0.2);
+    let sphere3 = sphereSDF(p, 0.3);
+    let yPlane = planeSDF(p, vec3f(0,1,0), 1.0);
     // let yPlane = yPlaneSDF(p, -2.0);translate box sdftranslate box sdf
-    let box = boxSDF(p, vec3f(0.4,0.2,1.0));
+    let box1 = boxSDF(rotateY(translate(p, vec3f(-0.25,-0.30,0)), 10), vec3f(0.2,0.45,0.2));
+    let box2 = boxSDF(rotateY(translate(p, vec3f(0.25,-0.55,-.5)), -10), vec3f(0.2,0.2,0.2));
+
+    let wall1 = boxSDF(translate(p, vec3f(-0.75,0,0)), vec3f(0.001,2,2));
+    let wall2 = boxSDF(translate(p, vec3f(0.75,0,0)), vec3f(0.001,2,2));
+    let wall3 = boxSDF(translate(p, vec3f(0,0.75,0)), vec3f(2,0.001,2));
+    let wall4 = boxSDF(translate(p, vec3f(0,-0.75,0)), vec3f(2,0.001,2));
+    let wall5 = boxSDF(translate(p, vec3f(0,-0.75,0)), vec3f(2,2,0.001));
+
     let torus = torusSDF(p, vec2f(0.3,0.2));
 
-    let world: array<f32, 4> = array(sphere3, sphere1, box, yPlane);
+    let world: array<f32, 6> = array(wall1, wall2, wall3, wall4, box1, box2);
 
     return getMin(world);
 }
@@ -132,7 +153,7 @@ fn fragmentMain(@builtin(position) fragCoord: vec4f, @location(0) uv: vec2f) -> 
         // calculate shading
         let normal = getNormal(originRay + dirRay * marchDist);
         let lightDir = normalize(vec3f(1.0,1.0,-1.0));
-        let diffuse = max(dot(normal, lightDir), 0.0);
+        let diffuse = max(dot(normal, lightDir), 0);
         let lightColor = vec3f(1.0,1.0,1.0);
         let finalColor = lightColor * diffuse;
         
