@@ -1,20 +1,28 @@
+const MATERIAL_LAMBERTIAN: u32 = 0u;
+const MATERIAL_DIFFUSE_LIGHT: u32 = 1u;
+
+struct Material {
+    color: vec4f,
+    matType: u32,
+}
+
 struct SDFOutput {
     dist: f32,
-    color: vec4f,
+    material: Material,
 }
 
-fn sphereSDF(p: vec3f, s: f32, c: vec4f) -> SDFOutput {
+fn sphereSDF(p: vec3f, s: f32, m: Material) -> SDFOutput {
     // return length(p) - s;
-    return SDFOutput(length(p)-s, c);
+    return SDFOutput(length(p)-s, m);
 }
 
-fn boxSDF(p: vec3f, b: vec3f, c: vec4f) -> SDFOutput {
+fn boxSDF(p: vec3f, b: vec3f, m: Material) -> SDFOutput {
     let q = abs(p) - b;
     let dist = length(max(q,vec3f(0.0,0.0,0.0))) +
         min(max(q.x,
                 max(q.y,q.z)),
             0);
-    return SDFOutput(dist, c);
+    return SDFOutput(dist, m);
 }
 
 fn torusSDF(p: vec3f, t: vec2f) -> f32 {
@@ -34,9 +42,9 @@ fn zPlaneSDF(p: vec3f, z: f32) -> f32 {
     return p.z - z;
 }
 
-fn planeSDF(p: vec3f, n: vec3f, h: f32, c: vec4f) -> SDFOutput {
+fn planeSDF(p: vec3f, n: vec3f, h: f32, m: Material) -> SDFOutput {
   let dist = dot(p,n) + h;
-  return SDFOutput(dist, c);
+  return SDFOutput(dist, m);
 }
 
 fn translate(p: vec3f, t: vec3f) -> vec3f {
@@ -66,17 +74,19 @@ fn getMin(objs: array<SDFOutput, 6>) -> SDFOutput {
 }
 
 fn sceneSDF(p: vec3f) -> SDFOutput {
-    let sphere1 = sphereSDF(translate(p, vec3f(0.4, 0.3, 0.0)), 0.3, vec4f(0.0,0.3,0.8,1.0));
-    let yPlane = planeSDF(p, vec3f(0,1,0), 1.0, vec4f(0.5,0.5,0.5,1.0));
-    // let yPlane = yPlaneSDF(p, -2.0);translate box sdftranslate box sdf
-    let box1 = boxSDF(rotateY(translate(p, vec3f(-0.25,-0.30,0)), 10), vec3f(0.2,0.45,0.2), vec4f(0.5,0.5,0.5,1.0));
-    let box2 = boxSDF(rotateY(translate(p, vec3f(0.25,-0.55,-.5)), -10), vec3f(0.2,0.2,0.2), vec4f(0.5,0.5,0.5,1.0));
+    let plainMat = Material(vec4f(0.5,0.5,0.5,1.0), MATERIAL_LAMBERTIAN);
+    let greenMat = Material(vec4f(0.0,1.0,0.0,1.0), MATERIAL_LAMBERTIAN);
+    let redMat = Material(vec4f(1.0,0.0,0.0,1.0), MATERIAL_LAMBERTIAN);
+    let sphere1 = sphereSDF(translate(p, vec3f(0.4, 0.3, 0.0)), 0.3, redMat);
+    // let yPlane = planeSDF(p, vec3f(0,1,0), 1.0, plainMat);
+    let box1 = boxSDF(rotateY(translate(p, vec3f(-0.25,-0.30,0)), 10), vec3f(0.2,0.45,0.2), plainMat);
+    let box2 = boxSDF(rotateY(translate(p, vec3f(0.25,-0.55,-.5)), -10), vec3f(0.2,0.2,0.2), plainMat);
 
-    let wall1 = boxSDF(translate(p, vec3f(-0.75,0,0)), vec3f(0.001,2,2), vec4f(1.0,0.0,0.0,1.0));
-    let wall2 = boxSDF(translate(p, vec3f(0.75,0,0)), vec3f(0.001,2,2), vec4f(0.0,1.0,0.0,1.0));
-    let wall3 = boxSDF(translate(p, vec3f(0,0.75,0)), vec3f(2,0.001,2), vec4f(0.5,0.5,0.5,1.0));
-    let wall4 = boxSDF(translate(p, vec3f(0,-0.75,0)), vec3f(2,0.001,2), vec4f(0.5,0.5,0.5,1.0));
-    let wall5 = boxSDF(translate(p, vec3f(0,-0.75,0)), vec3f(2,2,0.001), vec4f(0.5,0.5,0.5,1.0));
+    let wall1 = boxSDF(translate(p, vec3f(-0.75,0,0)), vec3f(0.001,2,2), redMat);
+    let wall2 = boxSDF(translate(p, vec3f(0.75,0,0)), vec3f(0.001,2,2), greenMat);
+    let wall3 = boxSDF(translate(p, vec3f(0,0.75,0)), vec3f(2,0.001,2), plainMat);
+    let wall4 = boxSDF(translate(p, vec3f(0,-0.75,0)), vec3f(2,0.001,2), plainMat);
+    let wall5 = boxSDF(translate(p, vec3f(0,-0.75,0)), vec3f(2,2,0.001), plainMat);
 
     let torus = torusSDF(p, vec2f(0.3,0.2));
 
@@ -99,22 +109,24 @@ fn march(origin: vec3f, dir: vec3f) -> SDFOutput {
         // get nearest distance from point to scene
         let res = sceneSDF(currPos);
         let distToScene = res.dist;
-        let color = res.color;
+        let material = res.material;
+        let matType = material.matType;
+        let color = material.color;
 
         // check for a hit
         if (distToScene < MIN_DIST) {
-            return SDFOutput(totalDist, color);
+            return SDFOutput(totalDist, material);
         }
 
         // check for a miss
         if (totalDist > MAX_DIST) {
-            return SDFOutput(-1.0, vec4f(0.0,0.0,0.0,0.0));
+            return SDFOutput(-1.0, Material(vec4f(0.0,0.0,0.0,0.0), MATERIAL_LAMBERTIAN));
         }
 
         // march forward
         totalDist += distToScene;
     }
-    return SDFOutput(-1.0, vec4f(0.0,0.0,0.0,0.0));
+    return SDFOutput(-1.0, Material(vec4f(0.0,0.0,0.0,0.0), MATERIAL_LAMBERTIAN));
 }
 
 // https://iquilezles.org/articles/normalsSDF/
@@ -128,6 +140,31 @@ fn getNormal(p: vec3f) -> vec3f {
                      k.yxy * sceneSDF(p + k.yxy*h).dist +
                      k.xxx * sceneSDF(p + k.xxx*h).dist);
 
+}
+
+fn calcLight(res: SDFOutput, originRay: vec3f, dirRay: vec3f) -> vec4f {
+    let marchDist = res.dist;
+    let material = res.material;
+    let color = material.color;
+
+    // determine color
+    if (marchDist < 0) {
+        // nothing hit, return background
+        return vec4f(0.3,0.0,0.6,1.0);
+    } else {
+        // calculate shading
+        if (material.matType == MATERIAL_LAMBERTIAN) {
+            let normal = getNormal(originRay + dirRay * marchDist);
+            let lightDir = normalize(vec3f(1.0,1.0,-1.0));
+            let diffuse = max(dot(normal, lightDir), 0.0);
+            let lightColor = vec3f(1.0,1.0,1.0);
+            let finalColor = lightColor * diffuse;
+            
+            return vec4f(finalColor, 1.0) * color;
+        }
+        if (material.matType == MATERIAL_DIFFUSE_LIGHT) {
+            return color;
+    }
 }
 
 @group(0) @binding(0) var<uniform> state: vec2u;
@@ -158,23 +195,25 @@ fn fragmentMain(@builtin(position) fragCoord: vec4f, @location(0) uv: vec2f) -> 
 
     // march the ray
     let res = march(originRay, dirRay);
-    let marchDist = res.dist;
-    let marchColor = res.color;
+    return calcLight(res, originRay, dirRay);
+    // let marchDist = res.dist;
+    // let material = res.material;
+    // let color = material.color;
 
-    // determine color
-    if (marchDist < 0) {
-        // nothing hit, return background
-        return vec4f(0.3,0.0,0.6,1.0);
-    } else {
-        // calculate shading
-        let normal = getNormal(originRay + dirRay * marchDist);
-        let lightDir = normalize(vec3f(1.0,1.0,-1.0));
-        let diffuse = max(dot(normal, lightDir), 0.0);
-        let lightColor = vec3f(1.0,1.0,1.0);
-        let finalColor = lightColor * diffuse;
+    // // determine color
+    // if (marchDist < 0) {
+    //     // nothing hit, return background
+    //     return vec4f(0.3,0.0,0.6,1.0);
+    // } else {
+    //     // calculate shading
+    //     let normal = getNormal(originRay + dirRay * marchDist);
+    //     let lightDir = normalize(vec3f(1.0,1.0,-1.0));
+    //     let diffuse = max(dot(normal, lightDir), 0.0);
+    //     let lightColor = vec3f(1.0,1.0,1.0);
+    //     let finalColor = lightColor * diffuse;
         
-        return vec4f(finalColor, 1.0) * marchColor;
-    }
+    //     return vec4f(finalColor, 1.0) * color;
+    // }
 
     // return vec4f(0,.4,.4,1);
 }
