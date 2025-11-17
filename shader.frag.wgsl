@@ -164,6 +164,7 @@ fn calcLight(res: SDFOutput, originRay: vec3f, dirRay: vec3f) -> vec4f {
         }
         if (material.matType == MATERIAL_DIFFUSE_LIGHT) {
             return color;
+        }
     }
 }
 
