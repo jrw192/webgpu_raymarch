@@ -13,38 +13,18 @@ struct SDFOutput {
 
 fn sphereSDF(p: vec3f, s: f32, m: Material) -> SDFOutput {
     // return length(p) - s;
-    return SDFOutput(length(p)-s, m);
+    return SDFOutput(length(p) - s, m);
 }
 
 fn boxSDF(p: vec3f, b: vec3f, m: Material) -> SDFOutput {
     let q = abs(p) - b;
-    let dist = length(max(q,vec3f(0.0,0.0,0.0))) +
-        min(max(q.x,
-                max(q.y,q.z)),
-            0);
+    let dist = length(max(q, vec3f(0.0, 0.0, 0.0))) + min(max(q.x, max(q.y, q.z)), 0);
     return SDFOutput(dist, m);
 }
 
-fn torusSDF(p: vec3f, t: vec2f) -> f32 {
-  let q = vec2f(length(p.xz)-t.x,p.y);
-  return length(q)-t.y;
-}
-
-fn xPlaneSDF(p: vec3f, x: f32) -> f32 {
-    return p.x - x;
-}
-
-fn yPlaneSDF(p: vec3f, y: f32) -> f32 {
-    return p.y - y;
-}
-
-fn zPlaneSDF(p: vec3f, z: f32) -> f32 {
-    return p.z - z;
-}
-
 fn planeSDF(p: vec3f, n: vec3f, h: f32, m: Material) -> SDFOutput {
-  let dist = dot(p,n) + h;
-  return SDFOutput(dist, m);
+    let dist = dot(p, n) + h;
+    return SDFOutput(dist, m);
 }
 
 fn translate(p: vec3f, t: vec3f) -> vec3f {
@@ -57,13 +37,13 @@ fn rotateY(p: vec3f, a: f32) -> vec3f {
     let theta = (PI / 100) * a;
     let sinTheta = sin(theta);
     let cosTheta = cos(theta);
-    return vec3f((cosTheta*p.x) + (sinTheta*p.z), p.y, (-sinTheta*p.x) + (cosTheta*p.z));
+    return vec3f((cosTheta * p.x) + (sinTheta * p.z), p.y, (- sinTheta * p.x) + (cosTheta * p.z));
 }
 
-fn getMin(objs: array<SDFOutput, 6>) -> SDFOutput {
+fn getMin(objs: array<SDFOutput, 8>) -> SDFOutput {
     var minDist = 1000.0;
     var minIndex = 0;
-    for (var i = 0; i < 6; i += 1) {
+    for (var i = 0; i < 7; i += 1) {
         // minDist = min(minDist, objs[i].dist);
         if (minDist > objs[i].dist) {
             minIndex = i;
@@ -74,23 +54,24 @@ fn getMin(objs: array<SDFOutput, 6>) -> SDFOutput {
 }
 
 fn sceneSDF(p: vec3f) -> SDFOutput {
-    let plainMat = Material(vec4f(0.5,0.5,0.5,1.0), MATERIAL_LAMBERTIAN);
-    let greenMat = Material(vec4f(0.0,1.0,0.0,1.0), MATERIAL_LAMBERTIAN);
-    let redMat = Material(vec4f(1.0,0.0,0.0,1.0), MATERIAL_LAMBERTIAN);
+    let plainMat = Material(vec4f(0.5, 0.5, 0.5, 1.0), MATERIAL_LAMBERTIAN);
+    let lightMat = Material(vec4f(1, 1, 1, 10), MATERIAL_DIFFUSE_LIGHT);
+    let greenMat = Material(vec4f(0.0, 1.0, 0.0, 1.0), MATERIAL_LAMBERTIAN);
+    let redMat = Material(vec4f(1.0, 0.0, 0.0, 1.0), MATERIAL_LAMBERTIAN);
     let sphere1 = sphereSDF(translate(p, vec3f(0.4, 0.3, 0.0)), 0.3, redMat);
     // let yPlane = planeSDF(p, vec3f(0,1,0), 1.0, plainMat);
-    let box1 = boxSDF(rotateY(translate(p, vec3f(-0.25,-0.30,0)), 10), vec3f(0.2,0.45,0.2), plainMat);
-    let box2 = boxSDF(rotateY(translate(p, vec3f(0.25,-0.55,-.5)), -10), vec3f(0.2,0.2,0.2), plainMat);
+    let box1 = boxSDF(rotateY(translate(p, vec3f(- 0.25, - 0.30, 0)), 10), vec3f(0.2, 0.45, 0.2), plainMat);
+    let box2 = boxSDF(rotateY(translate(p, vec3f(0.25, - 0.55, - 0.5)), - 10), vec3f(0.2, 0.2, 0.2), plainMat);
 
-    let wall1 = boxSDF(translate(p, vec3f(-0.75,0,0)), vec3f(0.001,2,2), redMat);
-    let wall2 = boxSDF(translate(p, vec3f(0.75,0,0)), vec3f(0.001,2,2), greenMat);
-    let wall3 = boxSDF(translate(p, vec3f(0,0.75,0)), vec3f(2,0.001,2), plainMat);
-    let wall4 = boxSDF(translate(p, vec3f(0,-0.75,0)), vec3f(2,0.001,2), plainMat);
-    let wall5 = boxSDF(translate(p, vec3f(0,-0.75,0)), vec3f(2,2,0.001), plainMat);
+    let wall1 = boxSDF(translate(p, vec3f(- 0.75, 0, 0)), vec3f(0.001, 2, 2), redMat);
+    let wall2 = boxSDF(translate(p, vec3f(0.75, 0, 0)), vec3f(0.001, 2, 2), greenMat);
+    let wall3 = boxSDF(translate(p, vec3f(0, 0.75, 0)), vec3f(2, 0.001, 2), plainMat);
+    let wall4 = boxSDF(translate(p, vec3f(0, - 0.75, 0)), vec3f(2, 0.001, 2), plainMat);
+    let wall5 = boxSDF(translate(p, vec3f(0, 0, 2)), vec3f(2, 2, 0.001), plainMat);
 
-    let torus = torusSDF(p, vec2f(0.3,0.2));
+    let light = boxSDF(translate(p, vec3f(0, 0.7401, 0)), vec3f(0.5, 0.001, 0.5), lightMat);
 
-    let world: array<SDFOutput, 6> = array(wall1, wall2, wall3, wall4, box1, box2);
+    let world: array<SDFOutput, 8> = array(wall1, wall2, wall3, wall4, wall5, light, box1, box2);
 
     return getMin(world);
     // return sphere1;
@@ -120,102 +101,134 @@ fn march(origin: vec3f, dir: vec3f) -> SDFOutput {
 
         // check for a miss
         if (totalDist > MAX_DIST) {
-            return SDFOutput(-1.0, Material(vec4f(0.0,0.0,0.0,0.0), MATERIAL_LAMBERTIAN));
+            return SDFOutput(- 1.0, Material(vec4f(0.0, 0.0, 0.0, 0.0), MATERIAL_LAMBERTIAN));
         }
 
         // march forward
         totalDist += distToScene;
     }
-    return SDFOutput(-1.0, Material(vec4f(0.0,0.0,0.0,0.0), MATERIAL_LAMBERTIAN));
+    return SDFOutput(- 1.0, Material(vec4f(0.0, 0.0, 0.0, 0.0), MATERIAL_LAMBERTIAN));
 }
 
 // https://iquilezles.org/articles/normalsSDF/
 // tetrahedron technique
 fn getNormal(p: vec3f) -> vec3f {
     let h = 0.0001;
-    let k = vec2f(1.0,-1.0);
+    let k = vec2f(1.0, - 1.0);
 
-    return normalize(k.xyy * sceneSDF(p + k.xyy*h).dist +
-                     k.yyx * sceneSDF(p + k.yyx*h).dist +
-                     k.yxy * sceneSDF(p + k.yxy*h).dist +
-                     k.xxx * sceneSDF(p + k.xxx*h).dist);
+    return normalize(k.xyy * sceneSDF(p + k.xyy * h).dist + k.yyx * sceneSDF(p + k.yyx * h).dist + k.yxy * sceneSDF(p + k.yxy * h).dist + k.xxx * sceneSDF(p + k.xxx * h).dist);
 
 }
 
-fn calcLight(res: SDFOutput, originRay: vec3f, dirRay: vec3f) -> vec4f {
-    let marchDist = res.dist;
-    let material = res.material;
-    let color = material.color;
+fn calcLight(originRay: vec3f, dirRay: vec3f, uv: vec2f) -> vec4f {
+    var color = vec4f(0, 0, 0, 0);
+    var throughput = vec4f(1, 1, 1, 1);
 
-    // determine color
-    if (marchDist < 0) {
-        // nothing hit, return background
-        return vec4f(0.3,0.0,0.6,1.0);
-    } else {
-        // calculate shading
-        if (material.matType == MATERIAL_LAMBERTIAN) {
-            let normal = getNormal(originRay + dirRay * marchDist);
-            let lightDir = normalize(vec3f(1.0,1.0,-1.0));
-            let diffuse = max(dot(normal, lightDir), 0.0);
-            let lightColor = vec3f(1.0,1.0,1.0);
-            let finalColor = lightColor * diffuse;
-            
-            return vec4f(finalColor, 1.0) * color;
+    var origin = originRay;
+    var dir = dirRay;
+    var seed = uv;
+    for (var i = 0; i < 6; i++) {
+        // march ray
+        let res = march(origin, dir);
+        let dist = res.dist;
+        let material = res.material;
+
+        // handle miss
+        if (dist < 0) {
+            // add sky
+            color += vec4f(.1, .4, .8, 1) * throughput;
+            break;
         }
+
+        // if hit:
+        let hitPoint = origin + (dir * dist);
+        let normal = getNormal(hitPoint);
+
+        // if hits light source
         if (material.matType == MATERIAL_DIFFUSE_LIGHT) {
-            return color;
+            let light = material.color.rgb * material.color.a;
+            color += vec4f(light, 1) * throughput;
+            break;
         }
-        return color;
+
+        // if hits diffuse surface
+        if (material.matType == MATERIAL_LAMBERTIAN) {
+            // color += material.color * throughput;
+            throughput *= material.color;
+
+            // get new ray
+            let bounceRay = getBounceRay(normal, seed);
+            dir = bounceRay;
+            origin = hitPoint + (normal * 0.001);
+        }
     }
+
+    return color;
 }
 
-@group(0) @binding(0) var<uniform> state: vec2u;
+fn getRandomInUnitSphere(seed: vec2f) -> vec3f {
+    let r1 = rand(seed);
+    let r2 = rand(seed + vec2f(1.0, 1.0));
+    let r3 = rand(seed + vec2f(-1.0, -1.0));
+    let remapped = vec3f(r1,r2,r3) * 2.0 - 1.0;
+    
+    return normalize(remapped); 
+}
+
+
+fn getBounceRay(normal: vec3f, seed: vec2f) -> vec3f {
+    let random = getRandomInUnitSphere(seed);
+
+    if (dot(random, normal) > 0) {
+        // return normalize(normal + getRandomInUnitSphere(seed));
+        return random;
+    }
+    // return - normalize(normal + getRandomInUnitSphere(seed));
+    return -random;
+}
+
+fn unitVecFrom(input: vec3f) -> vec3f {
+    let length = sqrt(pow(input.x, 2) + pow(input.y, 2) + pow(input.z, 2));
+    return input / length;
+}
+
+// todo: add seed as input later
+fn rand(seed: vec2f) -> f32 {
+    return fract(sin(dot(seed, vec2f(12.9898, 78.233))) * 43758.5453);
+}
+
+@group(0) @binding(0)
+var<uniform> state: vec2u;
 @fragment
 fn fragmentMain(@builtin(position) fragCoord: vec4f, @location(0) uv: vec2f) -> @location(0) vec4f {
     // set up camera
     var camX = 0.0;
     var camY = 0.0;
-    var camZ = -5.0;
+    var camZ = - 5.0;
 
-    if (state[0] % 4 == 0) {
-        camX = -0.5;
-    }
-    if (state[0] % 4 == 1) {
-        camX = 0.0;
-    }
-    if (state[0] % 4 == 2) {
-        camX = 0.5;
-    }
-    if (state[0] % 4 == 3) {
-        camX = 0.0;
-    }
+    // if (state[0] % 4 == 0) {
+    //     camX = -0.5;
+    // }
+    // if (state[0] % 4 == 1) {
+    //     camX = 0.0;
+    // }
+    // if (state[0] % 4 == 2) {
+    //     camX = 0.5;
+    // }
+    // if (state[0] % 4 == 3) {
+    //     camX = 0.0;
+    // }
 
     // calculate rays
     let originRay = vec3f(camX, camY, camZ);
-    let lookAt = vec3f(uv.x,uv.y,0.0);
+    let lookAt = vec3f(uv.x, uv.y, 0.0);
     let dirRay = normalize(lookAt - originRay);
 
+    var seed = uv * vec2f(f32(state[0] % 100u) + 1.0); 
     // march the ray
-    let res = march(originRay, dirRay);
-    return calcLight(res, originRay, dirRay);
-    // let marchDist = res.dist;
-    // let material = res.material;
-    // let color = material.color;
-
-    // // determine color
-    // if (marchDist < 0) {
-    //     // nothing hit, return background
-    //     return vec4f(0.3,0.0,0.6,1.0);
-    // } else {
-    //     // calculate shading
-    //     let normal = getNormal(originRay + dirRay * marchDist);
-    //     let lightDir = normalize(vec3f(1.0,1.0,-1.0));
-    //     let diffuse = max(dot(normal, lightDir), 0.0);
-    //     let lightColor = vec3f(1.0,1.0,1.0);
-    //     let finalColor = lightColor * diffuse;
-        
-    //     return vec4f(finalColor, 1.0) * color;
-    // }
-
-    // return vec4f(0,.4,.4,1);
+    let color = calcLight(originRay, dirRay, seed);
+    let gamma = 2.2;
+    let finalColor = pow(color.rgb, vec3f(1/gamma));
+    
+    return vec4f(finalColor, 1);
 }

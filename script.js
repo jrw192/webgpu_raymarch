@@ -135,7 +135,6 @@ async function main(gridSize) {
 
     function draw(i) {
         const encoder = device.createCommandEncoder();
-        console.log('i', i);
         device.queue.writeBuffer(uniformBuffer, 0, new Uint32Array([i]));
 
         const pass = encoder.beginRenderPass({
@@ -157,7 +156,7 @@ async function main(gridSize) {
         device.queue.submit([encoder.finish()]);
     }
 
-    const MAX_FRAMES = 100;
+    const MAX_FRAMES = 1;
     for (let i = 0; i < MAX_FRAMES; i++) {
         setTimeout(() => draw(i), i * 300);
     }
