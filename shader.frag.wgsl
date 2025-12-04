@@ -224,7 +224,7 @@ fn fragmentMain(@builtin(position) fragCoord: vec4f, @location(0) uv: vec2f) -> 
     let lookAt = vec3f(uv.x, uv.y, 0.0);
     let dirRay = normalize(lookAt - originRay);
 
-    var seed = uv * vec2f(f32(state[0] % 100u) + 1.0); 
+    var seed = uv;
     // march the ray
     let color = calcLight(originRay, dirRay, seed);
     let gamma = 2.2;
