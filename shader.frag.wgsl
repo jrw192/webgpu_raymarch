@@ -43,7 +43,7 @@ fn rotateY(p: vec3f, a: f32) -> vec3f {
 fn getMin(objs: array<SDFOutput, 8>) -> SDFOutput {
     var minDist = 1000.0;
     var minIndex = 0;
-    for (var i = 0; i < 7; i += 1) {
+    for (var i = 0; i < 8; i += 1) {
         // minDist = min(minDist, objs[i].dist);
         if (minDist > objs[i].dist) {
             minIndex = i;
@@ -54,10 +54,10 @@ fn getMin(objs: array<SDFOutput, 8>) -> SDFOutput {
 }
 
 fn sceneSDF(p: vec3f) -> SDFOutput {
-    let plainMat = Material(vec4f(0.5, 0.5, 0.5, 1.0), MATERIAL_LAMBERTIAN);
+    let plainMat = Material(vec4f(5.0, 5.0, 5.0, 1.0), MATERIAL_LAMBERTIAN);
     let lightMat = Material(vec4f(1, 1, 1, 10), MATERIAL_DIFFUSE_LIGHT);
-    let greenMat = Material(vec4f(0.0, 1.0, 0.0, 1.0), MATERIAL_LAMBERTIAN);
-    let redMat = Material(vec4f(1.0, 0.0, 0.0, 1.0), MATERIAL_LAMBERTIAN);
+    let greenMat = Material(vec4f(0.5, 5.0, 0.0, 1.0), MATERIAL_LAMBERTIAN);
+    let redMat = Material(vec4f(5.0, 0.0, 0.0, 1.0), MATERIAL_LAMBERTIAN);
     let sphere1 = sphereSDF(translate(p, vec3f(0.4, 0.3, 0.0)), 0.3, redMat);
     // let yPlane = planeSDF(p, vec3f(0,1,0), 1.0, plainMat);
     let box1 = boxSDF(rotateY(translate(p, vec3f(- 0.25, - 0.30, 0)), 10), vec3f(0.2, 0.45, 0.2), plainMat);
@@ -69,7 +69,7 @@ fn sceneSDF(p: vec3f) -> SDFOutput {
     let wall4 = boxSDF(translate(p, vec3f(0, - 0.75, 0)), vec3f(2, 0.001, 2), plainMat);
     let wall5 = boxSDF(translate(p, vec3f(0, 0, 2)), vec3f(2, 2, 0.001), plainMat);
 
-    let light = boxSDF(translate(p, vec3f(0, 0.7401, 0)), vec3f(0.5, 0.001, 0.5), lightMat);
+    let light = boxSDF(translate(p, vec3f(0, 0.7401, 0)), vec3f(0.25, 0.001, 0.25), lightMat);
 
     let world: array<SDFOutput, 8> = array(wall1, wall2, wall3, wall4, wall5, light, box1, box2);
 
@@ -81,7 +81,7 @@ fn sceneSDF(p: vec3f) -> SDFOutput {
 fn march(origin: vec3f, dir: vec3f) -> SDFOutput {
     var MAX_STEPS = 1000;
     var MAX_DIST = 1000.0;
-    var MIN_DIST = 0.005;
+    var MIN_DIST = 0.001;
     var totalDist = 0.0;
     for (var i = 0; i < MAX_STEPS; i++) {
         // get current position
@@ -136,7 +136,7 @@ fn calcLight(originRay: vec3f, dirRay: vec3f, uv: vec2f) -> vec4f {
         // handle miss
         if (dist < 0) {
             // add sky
-            color += vec4f(.1, .4, .8, 1) * throughput;
+            // color += vec4f(.1, .4, .8, 1) * throughput;
             break;
         }
 
@@ -167,11 +167,15 @@ fn calcLight(originRay: vec3f, dirRay: vec3f, uv: vec2f) -> vec4f {
 }
 
 fn getRandomInUnitSphere(seed: vec2f) -> vec3f {
-    let r1 = rand(seed);
-    let r2 = rand(seed + vec2f(1.0, 1.0));
-    let r3 = rand(seed + vec2f(-1.0, -1.0));
+    var r1 = rand(seed);
+    var r2 = rand(seed + vec2f(1.0, 1.0));
+    var r3 = rand(seed + vec2f(-1.0, -1.0));
+    // while (pow(r1,2) + pow(r2,2) + pow(r3,2) >= 1) {
+    //     r1 = rand(seed);
+    //     r2 = rand(seed + vec2f(1.0, 1.0));
+    //     r3 = rand(seed + vec2f(-1.0, -1.0));
+    // }
     let remapped = vec3f(r1,r2,r3) * 2.0 - 1.0;
-    
     return normalize(remapped); 
 }
 
@@ -225,8 +229,16 @@ fn fragmentMain(@builtin(position) fragCoord: vec4f, @location(0) uv: vec2f) -> 
     let dirRay = normalize(lookAt - originRay);
 
     var seed = uv;
+    var color = vec4f(0,0,0,0);
+    let SAMPLE_COUNT = 20;
+    for (var i = 0; i < SAMPLE_COUNT; i++) {
+        seed = uv * vec2f(f32(i), f32(i));
+
+        color += calcLight(originRay, dirRay, seed); 
+    }
+    color /= vec4f(f32(SAMPLE_COUNT),f32(SAMPLE_COUNT),f32(SAMPLE_COUNT),1.0);
+
     // march the ray
-    let color = calcLight(originRay, dirRay, seed);
     let gamma = 2.2;
     let finalColor = pow(color.rgb, vec3f(1/gamma));
     
