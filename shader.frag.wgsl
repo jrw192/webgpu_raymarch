@@ -54,10 +54,10 @@ fn getMin(objs: array<SDFOutput, 8>) -> SDFOutput {
 }
 
 fn sceneSDF(p: vec3f) -> SDFOutput {
-    let plainMat = Material(vec4f(5.0, 5.0, 5.0, 1.0), MATERIAL_LAMBERTIAN);
+    let plainMat = Material(vec4f(1.0, 1.0, 1.0, 1.0), MATERIAL_LAMBERTIAN);
     let lightMat = Material(vec4f(1, 1, 1, 10), MATERIAL_DIFFUSE_LIGHT);
-    let greenMat = Material(vec4f(0.5, 5.0, 0.0, 1.0), MATERIAL_LAMBERTIAN);
-    let redMat = Material(vec4f(5.0, 0.0, 0.0, 1.0), MATERIAL_LAMBERTIAN);
+    let greenMat = Material(vec4f(0.0, 1.0, 0.0, 1.0), MATERIAL_LAMBERTIAN);
+    let redMat = Material(vec4f(1.0, 0.0, 0.0, 1.0), MATERIAL_LAMBERTIAN);
     let sphere1 = sphereSDF(translate(p, vec3f(0.4, 0.3, 0.0)), 0.3, redMat);
     // let yPlane = planeSDF(p, vec3f(0,1,0), 1.0, plainMat);
     let box1 = boxSDF(rotateY(translate(p, vec3f(- 0.25, - 0.30, 0)), 10), vec3f(0.2, 0.45, 0.2), plainMat);
@@ -160,6 +160,7 @@ fn calcLight(originRay: vec3f, dirRay: vec3f, uv: vec2f) -> vec4f {
             let bounceRay = getBounceRay(normal, seed);
             dir = bounceRay;
             origin = hitPoint + (normal * 0.001);
+            seed = seed + vec2f(1.0, 1.0);
         }
     }
 
@@ -170,11 +171,6 @@ fn getRandomInUnitSphere(seed: vec2f) -> vec3f {
     var r1 = rand(seed);
     var r2 = rand(seed + vec2f(1.0, 1.0));
     var r3 = rand(seed + vec2f(-1.0, -1.0));
-    // while (pow(r1,2) + pow(r2,2) + pow(r3,2) >= 1) {
-    //     r1 = rand(seed);
-    //     r2 = rand(seed + vec2f(1.0, 1.0));
-    //     r3 = rand(seed + vec2f(-1.0, -1.0));
-    // }
     let remapped = vec3f(r1,r2,r3) * 2.0 - 1.0;
     return normalize(remapped); 
 }
@@ -184,10 +180,8 @@ fn getBounceRay(normal: vec3f, seed: vec2f) -> vec3f {
     let random = getRandomInUnitSphere(seed);
 
     if (dot(random, normal) > 0) {
-        // return normalize(normal + getRandomInUnitSphere(seed));
         return random;
     }
-    // return - normalize(normal + getRandomInUnitSphere(seed));
     return -random;
 }
 
@@ -208,20 +202,7 @@ fn fragmentMain(@builtin(position) fragCoord: vec4f, @location(0) uv: vec2f) -> 
     // set up camera
     var camX = 0.0;
     var camY = 0.0;
-    var camZ = - 5.0;
-
-    // if (state[0] % 4 == 0) {
-    //     camX = -0.5;
-    // }
-    // if (state[0] % 4 == 1) {
-    //     camX = 0.0;
-    // }
-    // if (state[0] % 4 == 2) {
-    //     camX = 0.5;
-    // }
-    // if (state[0] % 4 == 3) {
-    //     camX = 0.0;
-    // }
+    var camZ = -5.0;
 
     // calculate rays
     let originRay = vec3f(camX, camY, camZ);
@@ -230,9 +211,9 @@ fn fragmentMain(@builtin(position) fragCoord: vec4f, @location(0) uv: vec2f) -> 
 
     var seed = uv;
     var color = vec4f(0,0,0,0);
-    let SAMPLE_COUNT = 20;
+    let SAMPLE_COUNT = 100;
     for (var i = 0; i < SAMPLE_COUNT; i++) {
-        seed = uv * vec2f(f32(i), f32(i));
+        seed = uv + vec2f(f32(i), f32(i));
 
         color += calcLight(originRay, dirRay, seed); 
     }
