@@ -1,11 +1,16 @@
 // Helper function to load shader files
-async function loadShader(url) {
-    const response = await fetch(url);
-    if (!response.ok) {
-        throw new Error(`Failed to load shader: ${url}`);
-    }
-    return await response.text();
+async function loadShaders(urls) {
+    const shaders = await Promise.all(urls.map(url =>
+        fetch(url).then(res => {
+            if (!res.ok) throw new Error(`Could not load ${url}`);
+            return res.text();
+        })
+    ));
+
+    return shaders.join('\n');
 }
+
+const FRAG_SHADERS = ['./utils.frag.wgsl', './cornell.frag.wgsl', './shader.frag.wgsl'];;
 
 async function main(gridSize) {
     // ------------ setup ------------
@@ -67,8 +72,8 @@ async function main(gridSize) {
     device.queue.writeBuffer(uniformBuffer, 0, uniformArray);
 
     // ------------ vertex + frag shader module ------------
-    const vertexShaderCode = await loadShader('./shader.vert.wgsl');
-    const fragmentShaderCode = await loadShader('./shader.frag.wgsl');
+    const vertexShaderCode = await loadShaders(['./shader.vert.wgsl']);
+    const fragmentShaderCode = await loadShaders(FRAG_SHADERS);
     const combinedShaderCode = vertexShaderCode + '\n\n' + fragmentShaderCode;
 
     const shaderModule = device.createShaderModule({
