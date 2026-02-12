@@ -83,9 +83,9 @@ var<uniform> state: vec2u;
 @fragment
 fn fragmentMain(@builtin(position) fragCoord: vec4f, @location(0) uv: vec2f) -> @location(0) vec4f {
     // set up camera
-    var camX = 0.0;
-    var camY = 0.0;
-    var camZ = -5.0;
+    var camX = 10.0;
+    var camY = 8.0;
+    var camZ = -90.0;
 
     // calculate rays
     let originRay = vec3f(camX, camY, camZ);

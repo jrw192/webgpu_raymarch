@@ -10,7 +10,7 @@ async function loadShaders(urls) {
     return shaders.join('\n');
 }
 
-const FRAG_SHADERS = ['./utils.frag.wgsl', './cornell.frag.wgsl', './shader.frag.wgsl'];;
+const FRAG_SHADERS = ['./utils.frag.wgsl', './tetris.frag.wgsl', './shader.frag.wgsl'];;
 
 async function main(gridSize) {
     // ------------ setup ------------

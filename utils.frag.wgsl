@@ -11,6 +11,11 @@ struct SDFOutput {
     material: Material,
 }
 
+
+const EMPTY = SDFOutput(1000.0, Material(vec4f(1.0, 1.0, 1.0, 1.0), MATERIAL_LAMBERTIAN));
+
+// -------------------------- SDFs --------------------------
+
 fn sphereSDF(p: vec3f, s: f32, m: Material) -> SDFOutput {
     // return length(p) - s;
     return SDFOutput(length(p) - s, m);
@@ -40,11 +45,10 @@ fn rotateY(p: vec3f, a: f32) -> vec3f {
     return vec3f((cosTheta * p.x) + (sinTheta * p.z), p.y, (- sinTheta * p.x) + (cosTheta * p.z));
 }
 
-fn getMin(objs: array<SDFOutput, 8>) -> SDFOutput {
-    var minDist = 1000.0;
-    var minIndex = 0;
-    for (var i = 0; i < 8; i += 1) {
-        // minDist = min(minDist, objs[i].dist);
+fn getMin(objs: array<SDFOutput, 8>, count: u32) -> SDFOutput {
+    var minDist: f32 = 1000.0;
+    var minIndex: u32 = 0u;
+    for (var i: u32 = 0u; i < count; i = i + 1u) {
         if (minDist > objs[i].dist) {
             minIndex = i;
             minDist = objs[i].dist;
