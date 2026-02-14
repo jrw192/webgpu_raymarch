@@ -47,7 +47,7 @@ fn calcLight(originRay: vec3f, dirRay: vec3f, uv: vec2f) -> vec4f {
         // handle miss
         if (dist < 0) {
             // add sky
-            // color += vec4f(.1, .4, .8, 1) * throughput;
+            color += vec4f(.1, .4, .8, 1) * throughput;
             break;
         }
 
@@ -89,7 +89,7 @@ fn fragmentMain(@builtin(position) fragCoord: vec4f, @location(0) uv: vec2f) -> 
     // set up camera
     var camX = 10.0;
     var camY = 8.0;
-    var camZ = -90.0;
+    var camZ = -150.0;
 
     // calculate rays
     let originRay = vec3f(camX, camY, camZ);

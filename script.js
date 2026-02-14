@@ -14,7 +14,7 @@ const FRAG_SHADERS = ['./utils.frag.wgsl', './tetris.frag.wgsl', './shader.frag.
 
 const GRID_DIMENSIONS = {x: 10, y: 10, z: 10};
 const GRID_SIZE = GRID_DIMENSIONS.x * GRID_DIMENSIONS.y * GRID_DIMENSIONS.z;
-const WORLD_SIZE = 6;
+const WORLD_SIZE = 4;
 
 // builds list of all the pieces on the screen and their positions
 function createWorld() {
@@ -23,18 +23,11 @@ function createWorld() {
     const arr = new Float32Array(WORLD_SIZE * 4);
     for (let i = 0; i < WORLD_SIZE; i++) {
         const base = i * 4;
-        arr[base + 0] = 0.0; // x
+        arr[base + 0] = Math.floor(Math.random() * 11) * 0.2 - 1; // x
         arr[base + 1] = 0.0; // y
-        arr[base + 2] = 0.0; // z
-        arr[base + 3] = 0.0; // shape (0 = I)
+        arr[base + 2] = Math.floor(Math.random() * 11) * 0.2 - 1; // z
+        arr[base + 3] = i % 4; // shape (0 = I)
     }
-
-    // easy test: place an I-shape at z = -5 so it's in front of the camera
-    arr[0] = 0.0; // x
-    arr[1] = 0.0; // y
-    arr[2] = -5.0; // z
-    arr[3] = 0.0; // shape = I
-
     return arr;
 }
 
