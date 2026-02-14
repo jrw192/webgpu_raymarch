@@ -18,6 +18,10 @@ fn sceneSDF(p: vec3f) -> SDFOutput {
 
     let world: array<SDFOutput, 8> = array(wall1, wall2, wall3, wall4, wall5, light, box1, box2);
 
-    return getMin(world, 8);
+    var best = world[0];
+    for (var i: u32 = 1u; i < 8u; i = i + 1u) {
+        best = minSDF(best, world[i]);
+    }
+    return best;
     // return sphere1;
 }

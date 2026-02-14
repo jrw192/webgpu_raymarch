@@ -12,6 +12,33 @@ async function loadShaders(urls) {
 
 const FRAG_SHADERS = ['./utils.frag.wgsl', './tetris.frag.wgsl', './shader.frag.wgsl'];;
 
+const GRID_DIMENSIONS = {x: 10, y: 10, z: 10};
+const GRID_SIZE = GRID_DIMENSIONS.x * GRID_DIMENSIONS.y * GRID_DIMENSIONS.z;
+const WORLD_SIZE = 6;
+
+// builds list of all the pieces on the screen and their positions
+function createWorld() {
+    // pack as Float32Array of length WORLD_SIZE * 4
+    // layout per element: [pos.x, pos.y, pos.z, shapeAsFloat]
+    const arr = new Float32Array(WORLD_SIZE * 4);
+    for (let i = 0; i < WORLD_SIZE; i++) {
+        const base = i * 4;
+        arr[base + 0] = 0.0; // x
+        arr[base + 1] = 0.0; // y
+        arr[base + 2] = 0.0; // z
+        arr[base + 3] = 0.0; // shape (0 = I)
+    }
+
+    // easy test: place an I-shape at z = -5 so it's in front of the camera
+    arr[0] = 0.0; // x
+    arr[1] = 0.0; // y
+    arr[2] = -5.0; // z
+    arr[3] = 0.0; // shape = I
+
+    return arr;
+}
+
+
 async function main(gridSize) {
     // ------------ setup ------------
     const canvas = document.querySelector("canvas");
@@ -62,7 +89,7 @@ async function main(gridSize) {
     });
     device.queue.writeBuffer(vertexBuffer, /*bufferOffset=*/0, vertices);
 
-    // ------------ uniform buffer ------------
+    // ------------ uniform buffer for frame id ------------
     const uniformArray = new Uint32Array([1]); // Single number
     const uniformBuffer = device.createBuffer({
         label: "uniform buffer",
@@ -70,6 +97,25 @@ async function main(gridSize) {
         usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
     });
     device.queue.writeBuffer(uniformBuffer, 0, uniformArray);
+    
+    // ------------ uniform buffer for input params ------------
+    const paramsArray = new Uint32Array([WORLD_SIZE]); // Single number
+    const paramsBuffer = device.createBuffer({
+        label: "params uniform buffer",
+        size: 8,
+        usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+    });
+    device.queue.writeBuffer(paramsBuffer, 0, paramsArray);
+
+    // ------------ world state buffer  ------------
+    const stateArray = createWorld(); // Float32Array packed as [x,y,z,shapeFloat]
+
+    const stateBuffer = device.createBuffer({
+        label: "state buffer",
+        size: stateArray.byteLength,
+        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+    });
+    device.queue.writeBuffer(stateBuffer, 0, stateArray);
 
     // ------------ vertex + frag shader module ------------
     const vertexShaderCode = await loadShaders(['./shader.vert.wgsl']);
@@ -99,6 +145,14 @@ async function main(gridSize) {
             binding: 0,
             visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT | GPUShaderStage.COMPUTE,
             buffer: {}
+        }, {
+            binding: 1,
+            visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT | GPUShaderStage.COMPUTE,
+            buffer: {}
+        }, {
+            binding: 2,
+            visibility: GPUShaderStage.FRAGMENT,
+            buffer: {type: "read-only-storage"}
         },
         ]
     });
@@ -113,6 +167,14 @@ async function main(gridSize) {
         entries: [{
             binding: 0,
             resource: { buffer: uniformBuffer }
+        },
+        {
+            binding: 1,
+            resource: { buffer: paramsBuffer }
+        },
+        {
+            binding: 2,
+            resource: { buffer: stateBuffer }
         },
         ],
     })

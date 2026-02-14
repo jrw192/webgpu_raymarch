@@ -80,6 +80,10 @@ fn calcLight(originRay: vec3f, dirRay: vec3f, uv: vec2f) -> vec4f {
 
 @group(0) @binding(0)
 var<uniform> state: vec2u;
+@group(0) @binding(1)
+var<uniform> params: vec2u;
+@group(0) @binding(2)
+var<storage, read> worldBlocks: array<Block>;
 @fragment
 fn fragmentMain(@builtin(position) fragCoord: vec4f, @location(0) uv: vec2f) -> @location(0) vec4f {
     // set up camera
