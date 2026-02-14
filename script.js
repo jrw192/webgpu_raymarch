@@ -100,15 +100,15 @@ async function main(gridSize) {
     });
     device.queue.writeBuffer(paramsBuffer, 0, paramsArray);
 
-    // ------------ world state buffer  ------------
-    const stateArray = createWorld(); // Float32Array packed as [x,y,z,shapeFloat]
+    // ------------ block buffer  ------------
+    const blockArray = createWorld(); // Float32Array packed as [x,y,z,shapeFloat]
 
-    const stateBuffer = device.createBuffer({
+    const blockBuffer = device.createBuffer({
         label: "state buffer",
-        size: stateArray.byteLength,
+        size: blockArray.byteLength,
         usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
     });
-    device.queue.writeBuffer(stateBuffer, 0, stateArray);
+    device.queue.writeBuffer(blockBuffer, 0, blockArray);
 
     // ------------ vertex + frag shader module ------------
     const vertexShaderCode = await loadShaders(['./shader.vert.wgsl']);
@@ -167,7 +167,7 @@ async function main(gridSize) {
         },
         {
             binding: 2,
-            resource: { buffer: stateBuffer }
+            resource: { buffer: blockBuffer }
         },
         ],
     })
