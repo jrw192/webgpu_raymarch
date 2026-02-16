@@ -37,6 +37,7 @@ function createRandomBlock() {
     blockData[1] = 0.0; // y
     blockData[2] = Math.trunc((Math.floor(Math.random() * 21) * 0.1 - 1) * 10)/10; // z
     blockData[3] = Math.floor(Math.random() * 4); // w (shape id)
+    console.log(blockData[3]);
     return blockData;
 }
 

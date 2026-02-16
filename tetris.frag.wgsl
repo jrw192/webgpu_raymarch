@@ -4,6 +4,7 @@ fn sceneSDF(p: vec3f) -> SDFOutput {
     
     let plainMat = Material(vec4f(1.0, 1.0, 1.0, 1.0), MATERIAL_LAMBERTIAN);
     let greenMat = Material(vec4f(0.0, 1.0, 0.0, 1.0), MATERIAL_LAMBERTIAN);
+    let stateSDF = gameStateShape(p, state, params, plainMat);
 
     // let testPiece = zShape(translate(p, vec3f(0,0,-5.0)), plainMat);
     var closestObj = light;
@@ -29,5 +30,6 @@ fn sceneSDF(p: vec3f) -> SDFOutput {
         }
     
 
-    return closestObj;
+    // return closestObj;
+    return minSDF(stateSDF, light);
 }
