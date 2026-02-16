@@ -10,25 +10,34 @@ async function loadShaders(urls) {
     return shaders.join('\n');
 }
 
-const FRAG_SHADERS = ['./utils.frag.wgsl', './tetris.frag.wgsl', './shader.frag.wgsl'];;
+const FRAG_SHADERS = ['./utils.wgsl', './normal.wgsl', './tetris_utils.wgsl', './tetris.frag.wgsl', './shader.frag.wgsl'];;
 
 const GRID_DIMENSIONS = {x: 10, y: 10, z: 10};
 const GRID_SIZE = GRID_DIMENSIONS.x * GRID_DIMENSIONS.y * GRID_DIMENSIONS.z;
 const WORLD_SIZE = 4;
 
 // builds list of all the pieces on the screen and their positions
-function createWorld() {
+function createWorld(worldSize) {
     // pack as Float32Array of length WORLD_SIZE * 4
     // layout per element: [pos.x, pos.y, pos.z, shapeAsFloat]
-    const arr = new Float32Array(WORLD_SIZE * 4);
-    for (let i = 0; i < WORLD_SIZE; i++) {
+    const arr = new Float32Array(worldSize * 4);
+    for (let i = 0; i < worldSize; i++) {
         const base = i * 4;
-        arr[base + 0] = Math.floor(Math.random() * 11) * 0.2 - 1; // x
-        arr[base + 1] = 0.0; // y
-        arr[base + 2] = Math.floor(Math.random() * 11) * 0.2 - 1; // z
+        arr[base + 0] = Math.floor(Math.random() * 21) * 0.1 - 1; // x
+        arr[base + 1] = 1.0; // y
+        arr[base + 2] = Math.floor(Math.random() * 21) * 0.1 - 1; // z
         arr[base + 3] = i % 4; // shape (0 = I)
     }
     return arr;
+}
+
+function createRandomBlock() {
+    const blockData = new Float32Array(4);
+    blockData[0] = Math.trunc((Math.floor(Math.random() * 21) * 0.1 - 1) * 10)/10; // x
+    blockData[1] = 0.0; // y
+    blockData[2] = Math.trunc((Math.floor(Math.random() * 21) * 0.1 - 1) * 10)/10; // z
+    blockData[3] = Math.floor(Math.random() * 4); // w (shape id)
+    return blockData;
 }
 
 
@@ -92,23 +101,36 @@ async function main(gridSize) {
     device.queue.writeBuffer(uniformBuffer, 0, uniformArray);
     
     // ------------ uniform buffer for input params ------------
-    const paramsArray = new Uint32Array([WORLD_SIZE]); // Single number
+    let readyForPiece = 0; // 0=false, 1=true
+    const paramsArray = new Uint32Array([GRID_DIMENSIONS.x, GRID_DIMENSIONS.y, GRID_DIMENSIONS.z]); // Single number
     const paramsBuffer = device.createBuffer({
         label: "params uniform buffer",
-        size: 8,
+        size: paramsArray.byteLength,
         usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
     });
     device.queue.writeBuffer(paramsBuffer, 0, paramsArray);
 
     // ------------ block buffer  ------------
-    const blockArray = createWorld(); // Float32Array packed as [x,y,z,shapeFloat]
-
+    let blockArray = createRandomBlock(); // packed as [x,y,z,shapeFloat]
+    console.log(blockArray);
     const blockBuffer = device.createBuffer({
-        label: "state buffer",
-        size: blockArray.byteLength,
+        label: "block buffer",
+        size: 16,
         usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
     });
     device.queue.writeBuffer(blockBuffer, 0, blockArray);
+
+    // ------------ game state buffer  ------------
+    const stateArray = new Uint32Array(WORLD_SIZE).fill(0);
+
+    const stateBuffer = device.createBuffer({
+        label: "state buffer",
+        size: stateArray.byteLength,
+        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+    });
+    device.queue.writeBuffer(stateBuffer, 0, stateArray);
+
+
 
     // ------------ vertex + frag shader module ------------
     const vertexShaderCode = await loadShaders(['./shader.vert.wgsl']);
@@ -121,14 +143,14 @@ async function main(gridSize) {
     });
 
     // ------------ compute shader ------------
-    // const WORKGROUP_SIZE = 8;
-    // let computeShaderCode = await loadShader('./shader.compute.wgsl');
-    // computeShaderCode = computeShaderCode.replace(/WORKGROUP_SIZE_PLACEHOLDER/g, WORKGROUP_SIZE.toString());
+    const WORKGROUP_SIZE = 8;
+    let computeShaderCode = await loadShaders(['./utils.wgsl', './tetris_utils.wgsl', './shader.compute.wgsl']);
+    computeShaderCode = computeShaderCode.replace(/WORKGROUP_SIZE_PLACEHOLDER/g, WORKGROUP_SIZE.toString());
 
-    // const computeShaderModule = device.createShaderModule({
-    //     label: "compute shader module",
-    //     code: computeShaderCode
-    // });
+    const computeShaderModule = device.createShaderModule({
+        label: "compute shader module",
+        code: computeShaderCode
+    });
 
 
     // ------------ set up bind groups ------------
@@ -144,9 +166,13 @@ async function main(gridSize) {
             buffer: {}
         }, {
             binding: 2,
-            visibility: GPUShaderStage.FRAGMENT,
+            visibility: GPUShaderStage.FRAGMENT | GPUShaderStage.COMPUTE,
             buffer: {type: "read-only-storage"}
-        },
+        }, {
+            binding: 3,
+            visibility: GPUShaderStage.FRAGMENT | GPUShaderStage.COMPUTE,
+            buffer: {type: "storage"}
+        }
         ]
     });
     const pipelineLayout = device.createPipelineLayout({
@@ -168,6 +194,10 @@ async function main(gridSize) {
         {
             binding: 2,
             resource: { buffer: blockBuffer }
+        },
+        {
+            binding: 3,
+            resource: { buffer: stateBuffer }
         },
         ],
     })
@@ -196,6 +226,7 @@ async function main(gridSize) {
     function draw(i) {
         const encoder = device.createCommandEncoder();
         device.queue.writeBuffer(uniformBuffer, 0, new Uint32Array([i]));
+        fallPiece();
 
         const pass = encoder.beginRenderPass({
             colorAttachments: [{
@@ -216,9 +247,22 @@ async function main(gridSize) {
         device.queue.submit([encoder.finish()]);
     }
 
-    const MAX_FRAMES = 1;
+    const MAX_FRAMES = 100;
     for (let i = 0; i < MAX_FRAMES; i++) {
+
         setTimeout(() => draw(i), i * 300);
+    }
+
+
+    function fallPiece() {
+        if (blockArray[1] == -1) {
+            // done, load in a new block
+            blockArray = createRandomBlock();
+            device.queue.writeBuffer(blockBuffer, 0, blockArray);
+        } else {
+            blockArray[1] -= 0.2;
+            device.queue.writeBuffer(blockBuffer, 0, blockArray);
+        }
     }
 }
 

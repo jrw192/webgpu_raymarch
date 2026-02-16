@@ -58,14 +58,6 @@ fn minSDF(a: SDFOutput, b: SDFOutput) -> SDFOutput {
     return b;
 }
 
-// https://iquilezles.org/articles/normalsSDF/
-// tetrahedron technique
-fn getNormal(p: vec3f) -> vec3f {
-    let h = 0.0001;
-    let k = vec2f(1.0, - 1.0);
-
-    return normalize(k.xyy * sceneSDF(p + k.xyy * h).dist + k.yyx * sceneSDF(p + k.yyx * h).dist + k.yxy * sceneSDF(p + k.yxy * h).dist + k.xxx * sceneSDF(p + k.xxx * h).dist);
-}
 
 fn getRandomInUnitSphere(seed: vec2f) -> vec3f {
     var r1 = rand(seed);
